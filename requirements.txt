@@ -1,1 +1,3 @@
-FLASK
+Flask
+openai
+python-dotenv
