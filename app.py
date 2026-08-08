@@ -1,6 +1,20 @@
+import os
+
 from flask import Flask, render_template, request, jsonify
+from dotenv import load_dotenv
+from google import genai
+
+
+load_dotenv()
 
 app = Flask(__name__)
+
+# Get Gemini API key
+api_key = os.getenv("GEMINI_API_KEY")
+
+# Create Gemini client
+client = genai.Client(api_key=api_key)
+
 
 questions = [
     "Tell me about yourself.",
@@ -22,7 +36,9 @@ def home():
 def get_question(number):
 
     if number < 0 or number >= len(questions):
-        return jsonify({"question": "Interview completed!"})
+        return jsonify({
+            "question": "Interview completed!"
+        })
 
     return jsonify({
         "question": questions[number]
@@ -33,65 +49,99 @@ def get_question(number):
 def answer():
 
     data = request.json
+
     user_answer = data.get("answer", "").strip()
+    question_number = data.get("question_number", 0)
 
     if not user_answer:
         return jsonify({
             "result": "Please enter an answer."
         })
 
-    word_count = len(user_answer.split())
-    answer_lower = user_answer.lower()
+    try:
 
-    # Calculate score
-    if word_count >= 50:
-        score = 9
-        feedback = "Excellent answer. It is detailed and well explained."
-    elif word_count >= 30:
-        score = 8
-        feedback = "Good answer. Add a little more detail to make it stronger."
-    elif word_count >= 15:
-        score = 6
-        feedback = "Your answer is okay, but try to explain your experience in more detail."
-    else:
-        score = 4
-        feedback = "Your answer is too short. Give more details and examples."
+        question = questions[int(question_number)]
 
-    # Check technical keywords
-    keywords = [
-        "python",
-        "java",
-        "sql",
-        "machine learning",
-        "project",
-        "team",
-        "communication",
-        "developer",
-        "student"
-    ]
+        prompt = f"""
+You are an expert technical interviewer.
 
-    found = []
+Evaluate the candidate's answer.
 
-    for keyword in keywords:
-        if keyword in answer_lower:
-            found.append(keyword)
+Interview Question:
+{question}
 
-    if found:
-        feedback += "\nRelevant topics: " + ", ".join(found)
+Candidate Answer:
+{user_answer}
 
-    # Store score
-    scores.append(score)
+Evaluate the answer using these categories:
 
-    result = f"""
-Score: {score}/10
+1. Technical Accuracy - score from 0 to 10
+2. Relevance - score from 0 to 10
+3. Communication - score from 0 to 10
+4. Confidence - score from 0 to 10
+5. Completeness - score from 0 to 10
 
-Feedback:
-{feedback}
+Calculate an Overall Score from 0 to 10.
+
+Return exactly this format:
+
+Technical Accuracy: X/10
+Relevance: X/10
+Communication: X/10
+Confidence: X/10
+Completeness: X/10
+Overall Score: X/10
+
+Strengths:
+- Strength 1
+- Strength 2
+
+Improvements:
+- Improvement 1
+- Improvement 2
+
+Personalized Feedback:
+Write short personalized feedback.
 """
 
-    return jsonify({
-        "result": result
-    })
+        # Gemini AI request
+        response = client.models.generate_content(
+    model="gemini-3.6-flash",
+    contents=prompt
+)
+        result = response.text
+
+        # Extract overall score
+        overall_score = 0
+
+        for line in result.splitlines():
+
+            if "Overall Score:" in line:
+
+                try:
+                    score_text = line.split(":", 1)[1].strip()
+                    score_text = score_text.replace("/10", "")
+                    overall_score = float(score_text)
+
+                except ValueError:
+                    overall_score = 0
+
+        scores.append(overall_score)
+
+        return jsonify({
+            "result": result
+        })
+
+    except Exception as e:
+
+        print("Gemini Error:", repr(e))
+
+        return jsonify({
+            "result": (
+                "AI evaluation failed.\n\n"
+                "Please check the PowerShell terminal."
+            )
+        })
 
 
 @app.route("/final-score")
