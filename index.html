@@ -1,6 +1,11 @@
+```html
 <!DOCTYPE html>
-<html>
+<html lang="en">
+
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>AI Interview Agent</title>
 
     <style>
@@ -48,163 +53,157 @@
 
 <body>
 
-<div class="container">
+    <div class="container">
 
-    <h1>🤖 AI Interview Agent</h1>
+        <h1>🤖 AI Interview Agent</h1>
 
-    <p id="progress">Question 1 of 5</p>
+        <p id="progress">Question 1 of 5</p>
 
-    <h2 id="question">Loading question...</h2>
+        <h2 id="question">Loading question...</h2>
 
-    <textarea id="answer"
-        placeholder="Type your answer here..."></textarea>
+        <textarea id="answer"
+            placeholder="Type your answer here..."></textarea>
 
-    <br>
+        <br>
 
-    <button onclick="submitAnswer()">
-        Submit Answer
-    </button>
+        <button onclick="submitAnswer()">
+            Submit Answer
+        </button>
 
-    <button onclick="nextQuestion()" id="nextButton" style="display:none;">
-        Next Question
-    </button>
+        <button onclick="nextQuestion()" id="nextButton" style="display:none;">
+            Next Question
+        </button>
 
-    <div id="result"></div>
+        <div id="result"></div>
 
-</div>
-
-
-<script>
-
-let currentQuestion = 0;
-const totalQuestions = 5;
+    </div>
 
 
-// Load question
-async function loadQuestion() {
+    <script>
 
-    const response = await fetch("/question/" + currentQuestion);
-
-    const data = await response.json();
-
-    document.getElementById("question").innerText = data.question;
-
-    document.getElementById("progress").innerText =
-        "Question " + (currentQuestion + 1) +
-        " of " + totalQuestions;
-
-    document.getElementById("answer").value = "";
-
-    document.getElementById("result").innerText = "";
-
-    document.getElementById("nextButton").style.display = "none";
-}
+        let currentQuestion = 0;
+        const totalQuestions = 5;
 
 
-// Submit answer
-async function submitAnswer() {
+        // Load question
+        function loadQuestion() {
 
-    const answer =
-        document.getElementById("answer").value.trim();
+            fetch(`/question/${currentQuestion}`)
+                .then(response => response.json())
+                .then(data => {
 
-    const result =
-        document.getElementById("result");
+                    document.getElementById("question").innerText =
+                        data.question;
 
-    if (answer === "") {
+                    document.getElementById("progress").innerText =
+                        `Question ${currentQuestion + 1} of ${totalQuestions}`;
 
-        result.innerText =
-            "⚠️ Please type your answer first.";
+                });
+        }
 
-        return;
-    }
 
-    result.innerText =
-        "⏳ Evaluating your answer...";
+        // Submit answer
+        function submitAnswer() {
 
-    try {
+            const answer =
+                document.getElementById("answer").value.trim();
 
-        const response = await fetch("/answer", {
+            if (!answer) {
 
-            method: "POST",
+                alert("Please enter your answer.");
 
-            headers: {
-                "Content-Type": "application/json"
-            },
+                return;
+            }
 
-            body: JSON.stringify({
 
-                answer: answer,
+            fetch("/answer", {
 
-                question_number: currentQuestion
+                method: "POST",
+
+                headers: {
+                    "Content-Type": "application/json"
+                },
+
+                body: JSON.stringify({
+                    answer: answer
+                })
 
             })
 
-        });
+            .then(response => response.json())
 
-        const data = await response.json();
+            .then(data => {
 
-        result.innerText = data.result;
+                document.getElementById("result").innerText =
+                    data.result;
 
-        document.getElementById("nextButton")
-            .style.display = "inline-block";
+                document.getElementById("nextButton").style.display =
+                    "inline-block";
 
-    }
-
-    catch (error) {
-
-        result.innerText =
-            "❌ Server error. Check VS Code Terminal.";
-
-        console.error(error);
-    }
-}
+            });
+        }
 
 
-// Next question
-function nextQuestion() {
+        // Next question
+        function nextQuestion() {
 
-    currentQuestion++;
-if (currentQuestion >= totalQuestions) {
+            currentQuestion++;
 
-    document.getElementById("question")
-        .innerText = "🎉 Interview Completed!";
+            document.getElementById("answer").value = "";
 
-    document.getElementById("progress")
-        .innerText = "Completed";
+            document.getElementById("result").innerText = "";
 
-    document.getElementById("answer")
-        .style.display = "none";
-
-    document.querySelector("button")
-        .style.display = "none";
-
-    document.getElementById("nextButton")
-        .style.display = "none";
-
-    fetch("/final-score")
-        .then(response => response.json())
-        .then(data => {
-
-            document.getElementById("result").innerText =
-                "🎯 FINAL INTERVIEW SCORE\n\n" +
-                data.score + " / 10\n\n" +
-                "Questions answered: " +
-                data.answered + " / " +
-                data.total;
-
-        });
-
-    return;
-}
-   
-    loadQuestion();
-}
+            document.getElementById("nextButton").style.display =
+                "none";
 
 
-// Load first question
-loadQuestion();
+            if (currentQuestion < totalQuestions) {
 
-</script>
+                loadQuestion();
+
+            } else {
+
+                showFinalScore();
+
+            }
+        }
+
+
+        // Show final score
+        function showFinalScore() {
+
+            fetch("/final-score")
+
+                .then(response => response.json())
+
+                .then(data => {
+
+                    document.getElementById("progress").innerText =
+                        "🎯 Interview Completed";
+
+                    document.getElementById("question").innerText =
+                        "Final Interview Score";
+
+                    document.getElementById("answer").style.display =
+                        "none";
+
+                    document.querySelector("button").style.display =
+                        "none";
+
+                    document.getElementById("result").innerText =
+                        `🎯 FINAL SCORE: ${data.score}/10\n\n` +
+                        `Questions Answered: ${data.answered}/${data.total}`;
+
+                });
+        }
+
+
+        // Start interview
+        loadQuestion();
+
+    </script>
 
 </body>
+
 </html>
+```
